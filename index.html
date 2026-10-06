@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Thời khóa biểu</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  body{font-family:"Times New Roman",serif;margin:0;padding:16px;background:#fff;color:#000}
+  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px;font-family:system-ui,sans-serif}
+  select,input,button{font-size:16px;padding:6px}
+  h2{margin:4px 0 12px;font-family:system-ui,sans-serif;font-size:18px}
+  .wrap{overflow-x:auto;margin-bottom:20px}
+  table{border-collapse:collapse;width:100%;min-width:760px;font-size:15px}
+  th,td{border:1px solid #888;padding:5px 6px;text-align:center}
+  th{background:#5ffbff;font-weight:bold}
+  td.k{background:#ffff66;font-weight:bold}
+  td.tn{color:#1a3fd0}
+  #note{color:#555;font:13px system-ui,sans-serif;margin-bottom:6px}
+  #msg{color:#b00;font-family:system-ui,sans-serif}
+</style>
+</head>
+<body>
+<div class="bar">
+  <label>Lớp: <select id="cls"></select></label>
+</div>
+<div class="bar">
+  <label>Cách 1 - Tải file Excel: <input type="file" id="file" accept=".xlsx,.xls"></label>
+</div>
+<div class="bar">
+  <span>Cách 2 - Từ link:</span>
+  <input type="text" id="link" size="42" placeholder="Dán link bài TKB của trường (để trống = tuần mới nhất)">
+  <button id="go">Lấy từ link</button>
+</div>
+<h2 id="title"></h2>
+<div id="note"></div>
+<div id="msg"></div>
+<div id="out"></div>
+<script>
+const DAYS = [2,3,4,5,6,7], NAMES = {2:'Thứ hai',3:'Thứ ba',4:'Thứ tư',5:'Thứ năm',6:'Thứ sáu',7:'Thứ bảy'};
+const TIMES = {
+  S: ['7h15-8h00','8h05-8h50','9h10-9h55','10h00-10h45',''],
+  C: ['13h45-14h30','14h35-15h20','15h35-16h20','16h25-17h10','']
+};
+const NOTE = {S:'Giải lao 20 phút', C:'Giải lao 15 phút'};
+let DB = null;
+
+function parse(wb){
+  const db = {classes:[], data:{}, title:''};
+  wb.SheetNames.forEach(name=>{
+    const n = name.trim().toLowerCase();
+    const s = n.startsWith('sáng') ? 'S' : (n.startsWith('chiều') ? 'C' : null);
+    if(!s) return;
+    const ws = wb.Sheets[name];
+    const rows = XLSX.utils.sheet_to_json(ws,{header:1,defval:''});
+    const h = rows.findIndex(r=>String(r[0]).trim()==='Thứ');
+    if(h<0) return;
+    if(!db.title && ws.A3) db.title = String(ws.A3.v).replace(/\s*\n\s*/g,' - ');
+    const cols = [];
+    rows[h].forEach((v,c)=>{ if(c>=4 && String(v).trim()) cols.push([c,String(v).trim()]); });
+    cols.forEach(([c,cl])=>{
+      if(!db.classes.includes(cl)) db.classes.push(cl);
+      db.data[cl] = db.data[cl] || {S:{},C:{}};
+    });
+    let day = null;
+    for(let r=h+1;r<rows.length;r++){
+      const d = parseInt(rows[r][0]); if(d) day = d;
+      const p = parseInt(rows[r][2]);
+      if(!day || !p) continue;
+      cols.forEach(([c,cl])=>{
+        const t = String(rows[r][c]).trim();
+        (db.data[cl][s][day] = db.data[cl][s][day] || {})[p] = t;
+      });
+    }
+  });
+  return db;
+}
+
+const esc = s => s.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
+
+function table(cl, s){
+  const label = s==='S' ? 'Sáng' : 'Chiều';
+  let h = '<div class="wrap"><table><tr><th>Tiết</th><th>Buổi</th>' +
+    DAYS.map(d=>`<th>${NAMES[d]}</th>`).join('') + '<th>Thời Gian</th><th>Ghi Chú</th></tr>';
+  for(let p=1;p<=5;p++){
+    h += `<tr><td class="k">${p}</td><td class="k">${label}</td>`;
+    DAYS.forEach(d=>{
+      const t = (DB.data[cl][s][d]||{})[p] || '';
+      h += `<td class="${t.startsWith('TNHN')?'tn':''}">${esc(t)}</td>`;
+    });
+    h += `<td>${TIMES[s][p-1]}</td>`;
+    if(p===1) h += `<td rowspan="5">${NOTE[s]}</td>`;
+    h += '</tr>';
+  }
+  return h + '</table></div>';
+}
+
+function render(){
+  const cl = document.getElementById('cls').value;
+  try{ localStorage.setItem('lop', cl); }catch(e){}
+  document.getElementById('title').textContent = 'Lớp ' + cl + (DB.title ? ' — ' + DB.title : '');
+  document.getElementById('out').innerHTML = table(cl,'S') + table(cl,'C');
+}
+
+// ---- Lưu file đã chọn vào trình duyệt (IndexedDB) ----
+const STORE = 'files', KEY = 'current';
+const idb = () => new Promise((ok, no) => {
+  const q = indexedDB.open('tkb', 1);
+  q.onupgradeneeded = () => q.result.createObjectStore(STORE);
+  q.onsuccess = () => ok(q.result);
+  q.onerror = () => no(q.error);
+});
+async function saveFile(buf, label){
+  try{
+    const d = await idb();
+    await new Promise((ok, no) => {
+      const t = d.transaction(STORE, 'readwrite');
+      t.objectStore(STORE).put({buf, label, time: Date.now()}, KEY);
+      t.oncomplete = ok; t.onerror = () => no(t.error);
+    });
+    showNote(label);
+  }catch(e){}
+}
+async function getSaved(){
+  try{
+    const d = await idb();
+    return await new Promise((ok, no) => {
+      const q = d.transaction(STORE).objectStore(STORE).get(KEY);
+      q.onsuccess = () => ok(q.result || null);
+      q.onerror = () => no(q.error);
+    });
+  }catch(e){ return null; }
+}
+function showNote(label){
+  document.getElementById('note').textContent = label ? 'Đang dùng: ' + label : '';
+}
+
+// ---- Chia sẻ TKB cho mọi người (lưu trên server) ----
+function toB64(buf){
+  const u = new Uint8Array(buf); let s = '';
+  for(let i=0;i<u.length;i+=0x8000) s += String.fromCharCode.apply(null, u.subarray(i,i+0x8000));
+  return btoa(s);
+}
+function fromB64(b){
+  const s = atob(b), u = new Uint8Array(s.length);
+  for(let i=0;i<s.length;i++) u[i] = s.charCodeAt(i);
+  return u.buffer;
+}
+async function publish(buf, label){
+  try{
+    const r = await fetch('/api/shared', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({label, b64: toB64(buf)})});
+    if(!r.ok){ const j = await r.json().catch(()=>({})); throw new Error(j.error || ('Lỗi ' + r.status)); }
+    showNote(label + ' — đã chia sẻ cho mọi người');
+  }catch(e){
+    document.getElementById('msg').textContent = 'Đã dùng trên máy này nhưng chưa chia sẻ được: ' + e.message;
+  }
+}
+async function getShared(){
+  try{
+    const r = await fetch('/api/shared', {cache:'no-store'});
+    if(r.status !== 200) return null;
+    const j = await r.json();
+    return j && j.b64 ? j : null;
+  }catch(e){ return null; }
+}
+
+function load(wb){
+  DB = parse(wb);
+  const sel = document.getElementById('cls');
+  if(!DB.classes.length){ document.getElementById('msg').textContent='Không đọc được dữ liệu. Kiểm tra file có 2 sheet bắt đầu bằng "sáng" và "chiều".'; return false; }
+  document.getElementById('msg').textContent='';
+  let saved = ''; try{ saved = localStorage.getItem('lop')||''; }catch(e){}
+  sel.innerHTML = DB.classes.map(c=>`<option>${c}</option>`).join('');
+  if(DB.classes.includes(saved)) sel.value = saved;
+  render();
+  return true;
+}
+
+const stamp = () => new Date().toLocaleString('vi-VN');
+
+document.getElementById('cls').addEventListener('change', render);
+document.getElementById('file').addEventListener('change', e=>{
+  const f = e.target.files[0]; if(!f) return;
+  f.arrayBuffer().then(b=>{
+    if(load(XLSX.read(b,{type:'array'}))){ const lb = 'file tải lên "' + f.name + '" (' + stamp() + ')'; saveFile(b, lb); publish(b, lb); }
+  });
+});
+function fromLink(){
+  const u = document.getElementById('link').value.trim();
+  const msg = document.getElementById('msg');
+  msg.textContent = 'Đang tải...';
+  fetch('/api/tkb' + (u ? '?url=' + encodeURIComponent(u) : ''))
+    .then(r=>{ if(!r.ok) return r.json().then(j=>{ throw new Error(j.error||'Lỗi'); }); return r.arrayBuffer(); })
+    .then(b=>{
+      if(load(XLSX.read(b,{type:'array'}))){ const lb = (u ? 'file lấy từ link' : 'tuần mới nhất từ trường') + ' (' + stamp() + ')'; saveFile(b, lb); publish(b, lb); }
+    })
+    .catch(e=>{ msg.textContent = 'Không lấy được từ link: ' + e.message; });
+}
+document.getElementById('go').addEventListener('click', fromLink);
+
+// Mở trang: có file đã lưu thì dùng luôn; chưa có thì thử lấy tuần mới nhất (không lưu), lỗi thì dùng tkb.xlsx đi kèm
+getShared().then(sh=>{
+  if(sh && load(XLSX.read(fromB64(sh.b64),{type:'array'}))){ showNote(sh.label + ' — bản chung'); return; }
+  return getSaved();
+}).then(s=>{
+  if(s === undefined) return;
+  if(s && s.buf){
+    if(load(XLSX.read(s.buf,{type:'array'}))){ showNote(s.label); return; }
+  }
+  return fetch('/api/tkb').then(r=>{ if(!r.ok) throw 0; return r; })
+    .catch(()=>fetch('tkb.xlsx?v='+Date.now()))
+    .then(r=>r.arrayBuffer()).then(b=>load(XLSX.read(b,{type:'array'})))
+    .catch(()=>{ document.getElementById('msg').textContent='Không tải được thời khóa biểu'; });
+});
+</script>
+</body>
+</html>
