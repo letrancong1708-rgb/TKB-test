@@ -1,31 +1,25 @@
 // Vercel serverless function: lấy file TKB từ website trường (Google Sheets đã xuất bản)
 // /api/tkb            -> tuần mới nhất
 // /api/tkb?url=<link> -> link bài của trường hoặc link Google Sheets
+// Lưu ý: gọi web trường bằng fetch trơn (không giả User-Agent, không proxy) - đúng cách bản cũ từng chạy được.
 const BASE = 'http://thptchauphong.agg.edu.vn';
-const HEAD = {
-  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36',
-  'Accept-Language': 'vi-VN,vi;q=0.9'
-};
 const toXlsx = u => u.replace(/\/pubhtml.*$/, '/pub?output=xlsx').replace(/\/pub\?(?!output=xlsx).*$/, '/pub?output=xlsx');
 
-// Giải mã các kiểu viết URL hay gặp trong HTML
-const norm = s => s
-  .replace(/&amp;/g, '&')
-  .replace(/&#0*47;|&#x0*2f;/gi, '/')
-  .replace(/\\u002f/gi, '/')
-  .replace(/\\\//g, '/')
-  .replace(/%2F/gi, '/')
-  .replace(/%3A/gi, ':');
-
-// Lấy tất cả mã 2PACX-... của Google Sheets trong HTML
-const findIds = html => [...new Set(
-  (norm(html).match(/spreadsheets\/d\/e\/(2PACX-[\w-]+)/g) || []).map(x => x.split('/').pop())
-)];
-
+const why = e => (e && e.cause ? ' [' + (e.cause.code || e.cause.message) + ']' : '');
 const getText = async u => {
-  const r = await fetch(u, { headers: HEAD });
-  if (!r.ok) throw new Error('Trang trường trả về ' + r.status);
-  return r.text();
+  try {
+    const r = await fetch(u);
+    if (!r.ok) throw new Error('Trang trường trả về ' + r.status);
+    return await r.text();
+  } catch (e) {
+    throw new Error(String(e.message || e) + why(e));
+  }
+};
+
+// Lấy mã 2PACX-... của Google Sheets trong HTML (chịu được các kiểu viết URL khác nhau)
+const findIds = html => {
+  const t = html.replace(/&amp;/g, '&').replace(/\\u002f/gi, '/').replace(/\\\//g, '/').replace(/%2F/gi, '/');
+  return [...new Set((t.match(/spreadsheets\/d\/e\/(2PACX-[\w-]+)/g) || []).map(x => x.split('/').pop()))];
 };
 
 module.exports = async (req, res) => {
@@ -55,28 +49,25 @@ module.exports = async (req, res) => {
         if (!best) throw new Error('Không tìm thấy bài thời khóa biểu');
         postUrl = BASE + best.path;
       }
-
       const post = await getText(postUrl);
       const ids = findIds(post);
-      if (!ids.length) {
-        throw new Error('Không thấy mã Google Sheets trong bài (HTML dài ' + post.length + ' ký tự)');
-      }
+      if (!ids.length) throw new Error('Bài không có link Google Sheets');
 
-      // Chọn file có sheet "sáng" và "chiều" (file TKB lớp); không có thì lấy mã cuối
-      let pickId = '';
-      for (const id of ids) {
-        try {
-          const h = await getText('https://docs.google.com/spreadsheets/d/e/' + id + '/pubhtml');
-          if (/s[áa]ng/i.test(h) && /chi[ềe]u/i.test(h)) { pickId = id; break; }
-        } catch (e) {}
+      // Nhiều link thì chọn file có sheet "sáng" và "chiều"; không có thì lấy link đầu tiên
+      let pickId = ids[0];
+      if (ids.length > 1) {
+        for (const id of ids) {
+          try {
+            const h = await (await fetch('https://docs.google.com/spreadsheets/d/e/' + id + '/pubhtml')).text();
+            if (/s[áa]ng/i.test(h) && /chi[ềe]u/i.test(h)) { pickId = id; break; }
+          } catch (e) {}
+        }
       }
-      if (!pickId) pickId = ids[ids.length - 1];
-
       sheetUrl = 'https://docs.google.com/spreadsheets/d/e/' + pickId + '/pubhtml';
       source = postUrl;
     }
 
-    const r = await fetch(toXlsx(sheetUrl), { headers: HEAD });
+    const r = await fetch(toXlsx(sheetUrl));
     if (!r.ok) throw new Error('Google trả về ' + r.status);
     const buf = Buffer.from(await r.arrayBuffer());
 
@@ -85,7 +76,6 @@ module.exports = async (req, res) => {
     res.setHeader('X-Source', encodeURI(source));
     res.status(200).send(buf);
   } catch (e) {
-    const why = e.cause ? ' [' + (e.cause.code || e.cause.message) + ']' : '';
-    res.status(502).json({ error: String(e.message || e) + why });
+    res.status(502).json({ error: String(e.message || e) + why(e) });
   }
 };
