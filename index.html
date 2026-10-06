@@ -5,37 +5,107 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Thời khóa biểu</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
-  body{font-family:"Times New Roman",serif;margin:0;padding:16px;background:#fff;color:#000}
-  .bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:12px;font-family:system-ui,sans-serif}
-  select,input,button{font-size:16px;padding:6px}
-  h2{margin:4px 0 12px;font-family:system-ui,sans-serif;font-size:18px}
-  .wrap{overflow-x:auto;margin-bottom:20px}
-  table{border-collapse:collapse;width:100%;min-width:760px;font-size:15px}
-  th,td{border:1px solid #888;padding:5px 6px;text-align:center}
-  th{background:#5ffbff;font-weight:bold}
-  td.k{background:#ffff66;font-weight:bold}
-  td.tn{color:#1a3fd0}
-  #note{color:#555;font:13px system-ui,sans-serif;margin-bottom:6px}
-  #msg{color:#b00;font-family:system-ui,sans-serif}
+:root{--ink:#16204a;--muted:#5d6a8f;--paper:#eef2f9;--card:#fff;--line:#dde4f1;--head:#e9eef9;--accent:#2b4fd8;--mark:#ffc933;--markbg:#fff7da;--band:#17235c;--err:#c0262d;--ls:92%;--ll:90%;--lt:26%;color-scheme:light dark}
+@media(prefers-color-scheme:dark){:root{--ink:#e9eefb;--muted:#9aa6c6;--paper:#0d1222;--card:#161d33;--line:#27325a;--head:#1d2646;--accent:#86a2ff;--markbg:#33300f;--band:#0a0f20;--err:#ff7b80}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.45 "Be Vietnam Pro",system-ui,sans-serif}
+.band{background:var(--band);color:#fff;padding:22px 16px 64px}
+.in{max-width:1080px;margin:0 auto}
+.band .in{display:flex;flex-wrap:wrap;gap:14px 24px;align-items:flex-end;justify-content:space-between}
+.school{font-size:13px;font-weight:600;opacity:.7;margin:0 0 4px}
+h1{margin:0;font-size:clamp(28px,6vw,44px);line-height:1.05;font-weight:800;letter-spacing:-.03em}
+#title{margin:8px 0 0;font-size:13px;opacity:.75;max-width:52ch}
+.pick{display:flex;flex-direction:column;gap:4px;font-size:13px;font-weight:600;opacity:.95}
+select,input[type=text]{font:inherit;font-size:16px;color:var(--ink);background:var(--card);border:1.5px solid var(--line);border-radius:12px;padding:9px 12px}
+select{font-size:26px;font-weight:800;min-width:140px;padding:4px 14px;border:0}
+:focus-visible{outline:3px solid var(--mark);outline-offset:2px}
+.page{max-width:1080px;margin:-44px auto 0;padding:0 16px 32px}
+.hero{background:var(--card);border-radius:18px;padding:18px 20px;margin-bottom:18px;box-shadow:0 10px 30px rgba(20,32,80,.16);display:flex;flex-wrap:wrap;gap:8px 18px;align-items:center;border-left:8px solid var(--mark)}
+.hero .st{font-size:13px;font-weight:700;color:var(--muted);width:100%}
+.hero .big{font-size:clamp(22px,4.5vw,30px);font-weight:800;letter-spacing:-.02em;line-height:1.15}
+.hero .sub{color:var(--muted);font-weight:500}
+.hero.live{border-left-color:#1fb36b}
+.tabs{display:flex;gap:6px;margin-bottom:14px}
+.tabs button{flex:1;background:var(--card);color:var(--muted);border:1.5px solid var(--line);border-radius:12px;padding:9px 0;font-size:14px}
+.tabs button.on{background:var(--accent);border-color:var(--accent);color:#fff}
+.tabs button.td:not(.on){border-color:var(--mark);color:var(--ink)}
+@media(prefers-color-scheme:dark){.tabs button.on{color:#0d1222}}
+section{margin-bottom:20px}
+section h3{margin:0 0 8px;font-size:19px;font-weight:800;display:flex;flex-wrap:wrap;gap:2px 12px;align-items:baseline}
+section h3 small{font-size:13px;color:var(--muted);font-weight:500}
+.wrap{overflow-x:auto;background:var(--card);border-radius:16px;box-shadow:0 2px 10px rgba(20,32,80,.07)}
+table{border-collapse:separate;border-spacing:0;width:100%;min-width:760px}
+th,td{padding:6px;text-align:center;border-bottom:1px solid var(--line)}
+tr:last-child td{border-bottom:0}
+th{background:var(--head);font-size:13px;font-weight:700;padding:11px 6px}
+th.now{background:var(--mark);color:#16204a}
+td.now{background:var(--markbg)}
+td.p{font-weight:800;color:var(--accent);width:52px;font-size:17px}
+td.t{color:var(--muted);font-size:12px;white-space:nowrap;width:104px}
+td.live{box-shadow:inset 0 0 0 2.5px #1fb36b}
+.les{--h:220;background:hsl(var(--h) var(--ls) var(--ll));color:hsl(var(--h) 55% var(--lt));border-radius:10px;padding:6px 8px;text-align:left;line-height:1.25}
+.les b{display:block;font-size:13.5px;font-weight:700}
+.les i{display:block;font-style:normal;font-size:12px;opacity:.8}
+@media(prefers-color-scheme:dark){.les{--ls:38%;--ll:22%;--lt:84%}}
+.dayview .row{display:flex;gap:12px;align-items:center;padding:10px 14px;border-bottom:1px solid var(--line)}
+.dayview .row:last-child{border-bottom:0}
+.dayview .n{font-size:22px;font-weight:800;color:var(--accent);width:26px;text-align:center}
+.dayview .tm{font-size:12px;color:var(--muted);width:78px;line-height:1.3}
+.dayview .les{flex:1}
+.dayview .row.live{background:var(--markbg);box-shadow:inset 5px 0 0 #1fb36b}
+.dayview .empty{color:var(--muted);flex:1}
+@media(max-width:760px){.grid{display:none}}
+@media(min-width:761px){.dv,.tabs{display:none}}
+.tools{background:var(--card);border-radius:16px;padding:2px 16px;margin-bottom:8px;box-shadow:0 2px 10px rgba(20,32,80,.07)}
+.tools summary{cursor:pointer;font-weight:700;padding:12px 0;color:var(--muted)}
+.tools .bar{display:flex;flex-wrap:wrap;gap:8px 10px;align-items:center;padding:4px 0 14px;font-size:14px}
+.tools .bar>span,.tools label{font-weight:600}
+button{font:inherit;font-weight:700;font-size:15px;background:var(--accent);color:#fff;border:0;border-radius:10px;padding:9px 16px;cursor:pointer}
+@media(prefers-color-scheme:dark){button{color:#0d1222}}
+#note{color:var(--muted);font-size:13px;margin:10px 2px 0}
+#msg{color:var(--err);font-weight:600;font-size:14px;margin:6px 2px}
+#msg:empty{display:none}
+#foot{margin-top:26px;text-align:center;color:var(--muted);font-size:13px}
+#foot b{color:var(--ink)}
 </style>
 </head>
 <body>
-<div class="bar">
-  <label>Lớp: <select id="cls"></select></label>
-</div>
-<div class="bar">
-  <label>Cách 1 - Tải file Excel: <input type="file" id="file" accept=".xlsx,.xls"></label>
-</div>
-<div class="bar">
-  <span>Cách 2 - Từ link:</span>
-  <input type="text" id="link" size="42" placeholder="Dán link bài TKB của trường (để trống = tuần mới nhất)">
-  <button id="go">Lấy từ link</button>
-</div>
-<h2 id="title"></h2>
-<div id="note"></div>
-<div id="msg"></div>
+<div class="band"><div class="in">
+  <div>
+    <p class="school">Trường THPT Châu Phong</p>
+    <h1>Thời khóa biểu</h1>
+    <p id="title"></p>
+  </div>
+  <label class="pick">Chọn lớp <select id="cls"></select></label>
+</div></div>
+<div class="page">
+<div id="today"></div>
 <div id="out"></div>
+<details class="tools">
+  <summary>Cập nhật thời khóa biểu</summary>
+  <div class="bar">
+    <label for="file">Tải file Excel:</label>
+    <input type="file" id="file" accept=".xlsx,.xls">
+  </div>
+  <div class="bar">
+    <span>Hoặc lấy từ link:</span>
+    <input type="text" id="link" size="40" placeholder="Dán link Google Sheets hoặc link bài của trường (để trống = tuần mới nhất)">
+    <button id="go">Lấy từ link</button>
+  </div>
+  <div class="bar">
+    <span>Cách nhanh:</span>
+    <a id="bm" href="#" style="font-weight:700;color:var(--accent)" onclick="return false">Lấy TKB từ trang trường</a>
+    <small style="color:var(--muted)">Kéo nút này lên thanh dấu trang. Mở bài TKB của trường rồi bấm nó, trang sẽ tự lấy link Google Sheets.</small>
+  </div>
+</details>
+<div id="msg"></div>
+<div id="note"></div>
+<div id="foot">Powered by <b>Trần Công</b></div>
+</div>
 <script>
 const DAYS = [2,3,4,5,6,7], NAMES = {2:'Thứ hai',3:'Thứ ba',4:'Thứ tư',5:'Thứ năm',6:'Thứ sáu',7:'Thứ bảy'};
 const TIMES = {
@@ -78,29 +148,87 @@ function parse(wb){
 
 const esc = s => s.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]));
 
-function table(cl, s){
-  const label = s==='S' ? 'Sáng' : 'Chiều';
-  let h = '<div class="wrap"><table><tr><th>Tiết</th><th>Buổi</th>' +
-    DAYS.map(d=>`<th>${NAMES[d]}</th>`).join('') + '<th>Thời Gian</th><th>Ghi Chú</th></tr>';
+const TODAY = new Date().getDay() + 1; // Thứ hai = 2 ... Thứ bảy = 7, Chủ nhật = 1
+let DAY = TODAY >= 2 ? TODAY : 2;
+const hue = t => { let h = 0; for (const c of t) h = (h*31 + c.charCodeAt(0)) % 360; return h; };
+const RANGE = {};
+['S','C'].forEach(s => RANGE[s] = TIMES[s].map(x => { const m = x.match(/(\d+)h(\d+)-(\d+)h(\d+)/); return m ? [+m[1]*60 + +m[2], +m[3]*60 + +m[4]] : null; }));
+const hm = m => Math.floor(m/60) + 'h' + String(m%60).padStart(2,'0');
+const split = t => { const p = t.split('-').map(x=>x.trim()); const teacher = p.length > 1 ? p.pop() : ''; return [p.join(' – '), teacher]; };
+
+function lesson(t){
+  if(!t) return '';
+  const [sub, gv] = split(t);
+  return `<div class="les" style="--h:${hue(sub)}"><b>${esc(sub)}</b>${gv ? `<i>${esc(gv)}</i>` : ''}</div>`;
+}
+
+// Tiết đang diễn ra / tiết kế tiếp của hôm nay
+function status(cl){
+  const d = new Date(), now = d.getHours()*60 + d.getMinutes();
+  let live = null, next = null;
+  if(DAYS.includes(TODAY)){
+    for(const s of ['S','C']) for(let p=1;p<=5;p++){
+      const r = RANGE[s][p-1], t = ((DB.data[cl][s][TODAY]||{})[p]) || '';
+      if(!r || !t) continue;
+      if(now >= r[0] && now < r[1]) live = {s,p,t,r};
+      else if(now < r[0] && !next) next = {s,p,t,r};
+    }
+  }
+  return {live, next};
+}
+
+function hero(cl, st){
+  if(!DAYS.includes(TODAY)) return '<div class="hero"><div class="big">Hôm nay là Chủ nhật</div><div class="sub">Nghỉ học</div></div>';
+  const f = (x, label) => { const [sub, gv] = split(x.t); const bs = x.s==='S' ? 'sáng' : 'chiều';
+    return `<div class="hero${label==='Đang học'?' live':''}"><div class="st">${label} · Tiết ${x.p} buổi ${bs} · ${hm(x.r[0])}–${hm(x.r[1])}</div><div class="big">${esc(sub)}</div><div class="sub">${esc(gv)}</div></div>`; };
+  if(st.live) return f(st.live, 'Đang học');
+  if(st.next) return f(st.next, 'Tiết kế tiếp');
+  return `<div class="hero"><div class="st">${NAMES[TODAY]}</div><div class="big">Hôm nay đã hết tiết</div></div>`;
+}
+
+function table(cl, s, st){
+  const label = s==='S' ? 'Buổi sáng' : 'Buổi chiều';
+  const lv = st.live && st.live.s===s ? st.live.p : 0;
+  let h = `<section><h3>${label} <small>${NOTE[s]}</small></h3><div class="wrap"><table><tr><th>Tiết</th>` +
+    DAYS.map(d=>`<th class="${d===TODAY?'now':''}">${NAMES[d]}</th>`).join('') + '<th>Thời gian</th></tr>';
   for(let p=1;p<=5;p++){
-    h += `<tr><td class="k">${p}</td><td class="k">${label}</td>`;
+    h += `<tr><td class="p">${p}</td>`;
     DAYS.forEach(d=>{
       const t = (DB.data[cl][s][d]||{})[p] || '';
-      h += `<td class="${t.startsWith('TNHN')?'tn':''}">${esc(t)}</td>`;
+      h += `<td class="${(d===TODAY?'now ':'')+(d===TODAY && p===lv?'live':'')}">${lesson(t)}</td>`;
     });
-    h += `<td>${TIMES[s][p-1]}</td>`;
-    if(p===1) h += `<td rowspan="5">${NOTE[s]}</td>`;
-    h += '</tr>';
+    h += `<td class="t">${TIMES[s][p-1]}</td></tr>`;
   }
-  return h + '</table></div>';
+  return h + '</table></div></section>';
 }
+
+function dayView(cl, s, st){
+  const label = s==='S' ? 'Buổi sáng' : 'Buổi chiều';
+  const lv = st.live && st.live.s===s && DAY===TODAY ? st.live.p : 0;
+  let h = `<section><h3>${label} <small>${NOTE[s]}</small></h3><div class="wrap dayview">`;
+  for(let p=1;p<=5;p++){
+    const t = (DB.data[cl][s][DAY]||{})[p] || '';
+    if(!t) continue;
+    h += `<div class="row${p===lv?' live':''}"><div class="n">${p}</div><div class="tm">${TIMES[s][p-1].replace('-','<br>')}</div>${lesson(t)}</div>`;
+  }
+  if(!h.includes('class="row')) h += '<div class="row"><div class="empty">Không có tiết</div></div>';
+  return h + '</div></section>';
+}
+
+function setDay(d){ DAY = d; render(); }
 
 function render(){
   const cl = document.getElementById('cls').value;
   try{ localStorage.setItem('lop', cl); }catch(e){}
   document.getElementById('title').textContent = 'Lớp ' + cl + (DB.title ? ' — ' + DB.title : '');
-  document.getElementById('out').innerHTML = table(cl,'S') + table(cl,'C');
+  const st = status(cl);
+  document.getElementById('today').innerHTML = hero(cl, st);
+  const tabs = '<div class="tabs">' + DAYS.map(d=>`<button class="${d===DAY?'on':''} ${d===TODAY?'td':''}" onclick="setDay(${d})">T${d}</button>`).join('') + '</div>';
+  document.getElementById('out').innerHTML =
+    `<div class="grid">${table(cl,'S',st)}${table(cl,'C',st)}</div>` +
+    tabs + `<div class="dv">${dayView(cl,'S',st)}${dayView(cl,'C',st)}</div>`;
 }
+setInterval(()=>{ if(DB) render(); }, 60000);
 
 // ---- Lưu file đã chọn vào trình duyệt (IndexedDB) ----
 const STORE = 'files', KEY = 'current';
@@ -185,21 +313,30 @@ document.getElementById('file').addEventListener('change', e=>{
     if(load(XLSX.read(b,{type:'array'}))){ const lb = 'file tải lên "' + f.name + '" (' + stamp() + ')'; saveFile(b, lb); publish(b, lb); }
   });
 });
-function fromLink(){
-  const u = document.getElementById('link').value.trim();
+const api = x => '/api/tkb' + (x ? '?url=' + encodeURIComponent(x) : '');
+async function fromLink(){
+  let u = document.getElementById('link').value.trim();
+  const m = u.match(/2PACX-[\w-]+/);   // dán link Sheets, link bài, hoặc cả mã nguồn trang đều được
+  if(m) u = 'https://docs.google.com/spreadsheets/d/e/' + m[0] + '/pubhtml';
   const msg = document.getElementById('msg');
   msg.textContent = 'Đang tải...';
-  fetch('/api/tkb' + (u ? '?url=' + encodeURIComponent(u) : ''))
-    .then(r=>{ if(!r.ok) return r.json().then(j=>{ throw new Error(j.error||'Lỗi'); }); return r.arrayBuffer(); })
-    .then(b=>{
-      if(load(XLSX.read(b,{type:'array'}))){ const lb = (u ? 'file lấy từ link' : 'tuần mới nhất từ trường') + ' (' + stamp() + ')'; saveFile(b, lb); publish(b, lb); }
-    })
-    .catch(e=>{ msg.textContent = 'Không lấy được từ link: ' + e.message; });
+  try{
+    let r = await fetch(api(u));
+    if(!r.ok){
+      const j = await r.json().catch(()=>({}));
+      const err = j.error || ('Lỗi ' + r.status);
+      if(/thptchauphong/.test(u)) throw new Error(err + '. Cách khác: mở bài của trường rồi bấm nút dấu trang "Lấy TKB từ trang trường" (trong mục Cập nhật thời khóa biểu), hoặc dán link Google Sheets vào ô này.');
+      throw new Error(err);
+    }
+    const b = await r.arrayBuffer();
+    if(load(XLSX.read(b,{type:'array'}))){ const lb = (u ? 'file lấy từ link' : 'tuần mới nhất từ trường') + ' (' + stamp() + ')'; saveFile(b, lb); publish(b, lb); return true; }
+    return false;
+  }catch(e){ msg.textContent = 'Không lấy được từ link: ' + e.message; return false; }
 }
 document.getElementById('go').addEventListener('click', fromLink);
 
 // Mở trang: có file đã lưu thì dùng luôn; chưa có thì thử lấy tuần mới nhất (không lưu), lỗi thì dùng tkb.xlsx đi kèm
-getShared().then(sh=>{
+function init(){ return getShared().then(sh=>{
   if(sh && load(XLSX.read(fromB64(sh.b64),{type:'array'}))){ showNote(sh.label + ' — bản chung'); return; }
   return getSaved();
 }).then(s=>{
@@ -212,6 +349,13 @@ getShared().then(sh=>{
     .then(r=>r.arrayBuffer()).then(b=>load(XLSX.read(b,{type:'array'})))
     .catch(()=>{ document.getElementById('msg').textContent='Không tải được thời khóa biểu'; });
 });
+}
+const Q = new URLSearchParams(location.search).get('sheet');
+if(Q){ document.getElementById('link').value = Q; fromLink().then(ok=>{ history.replaceState(null,'',location.pathname); if(!ok) init(); }); }
+else init();
+
+// Nút dấu trang: bấm khi đang mở bài TKB của trường sẽ tự tìm link Google Sheets trong mã nguồn trang
+document.getElementById('bm').href = "javascript:(function(){var m=document.documentElement.innerHTML.match(/2PACX-[\\w-]+/);if(!m){alert('Không tìm thấy link Google Sheets trong trang này');return}location.href='" + location.origin + "/?sheet='+m[0]})()";
 </script>
 </body>
 </html>
